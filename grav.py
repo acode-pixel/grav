@@ -5,17 +5,16 @@ import numpy as np
 
 class obj:
   
-  def __init__(self, x, y):
-    self.mass = 0
-    self.coords = [x, y]
-    self.speed = [0,0]#sq units/s
-    self.lockPos = False
+  def __init__(self, coords=[0.0, 0.0], mass=1, speed=[0.0, 0.0], lockPos=False):
+    self.mass = mass
+    self.coords = np.array(coords, dtype=float)
+    self.speed = np.array(speed, dtype=float) #sq units/s
+    self.lockPos = lockPos
     self.points = []
     self.points.append([self.coords[0], self.coords[1]])
   
   def push(self,x,y):
-    self.speed[0] += x 
-    self.speed[1] += y 
+    self.speed += np.array([x, y], dtype=float)
   
   def update(self, otherObjs):
     if self.lockPos:
@@ -27,90 +26,104 @@ class obj:
         inflence = self.getInfluencefromObj(i)
         self.push(inflence[0],inflence[1])
     
-    self.coords[0] += self.speed[0]
-    self.coords[1] += self.speed[1]
+    self.coords += self.speed
     
     self.points.append([self.coords[0], self.coords[1]])
     
   def getInfluencefromObj(self, otherObj):
     if self == otherObj:
       return [0,0]
-    localCoords = [self.coords[0]-otherObj.coords[0],self.coords[1]-otherObj.coords[1]]
-    influence = [0,0]  
-    distanceX = math.dist([0,0],[localCoords[0],0])
-    distanceY = math.dist([0,0],[0,localCoords[1]])
+    localCoords = self.coords - otherObj.coords
+    influence = np.array([0, 0], dtype=float)
+    axis_distances = np.array([0, 0], dtype=float)
+    axis_distances[0] = math.dist([0,0],[localCoords[0],0])
+    axis_distances[1] = math.dist([0,0],[0,localCoords[1]])
     distance = math.dist([0,0],localCoords)
     
-    g = (otherObj.mass**2)/((distance**2)*2*math.pi) #if distance != 0 and distance <= otherObj.mass**2.0 else 0
-    influence[0] = (g * (distanceX/distance))/self.mass
-    influence[1] = (g * (distanceY/distance))/self.mass
-    
-    
-    #influence[0] = 0 if distance == 0 or distance >= otherObj.mass**2.0 else (otherObj.mass**2.0)/(distanceX**2)*2*math.pi
-    #influence[1] = 0 if distance == 0 or distance >= otherObj.mass**2.0 else (otherObj.mass**2.0)/(distanceY**2)*2*math.pi
+    g = (otherObj.mass**2)/((distance**2)*2*math.pi) # G = M^2 / 2pi * d^2
+    influence = (g * (axis_distances/distance))/self.mass
     
     influence[0] = -influence[0] if localCoords[0] > 0 else influence[0]
     influence[1] = -influence[1] if localCoords[1] > 0 else influence[1]
-    
-    #influence[0] = influence[0] if influence[0] < otherObj.mass else otherObj.mass
-    #influence[1] = influence[1] if influence[1] < otherObj.mass else otherObj.mass
-    
-    #print(f" local coords: {localCoords}, influence: {influence}")
     
     return influence
       
   def print(self):
     print(f"coords: {self.coords}, speed: {self.speed}")
+    
+class sim:
+  def __init__(self, name="Sim-Test", secs=25, fps=60):
+    self.name = name
+    self.objs = []
+    self.frames = fps*secs
+    self.fps = fps
+    
+    self.fig, self.ax = plt.subplots()
+    self.dt_array = np.zeros(self.frames, dtype=float)
+    self.prog_dt = 0
   
+  def create_obj(self, pos=[0, 0], mass=1, speed=[0, 0], lockPos=False):
+    self.objs.append(obj(pos, mass, speed, lockPos))
+  
+  def calculate(self):
+    self.prog_dt = time.time()
+    dt_i = 0
+    frames_count = 0
+    while frames_count < self.frames:
+      i = 0
+      past_dt = time.perf_counter_ns()
+      while i < len(self.objs):
+        self.objs[i].update(self.objs)
+        i += 1
+      
+      dt = time.perf_counter_ns() - past_dt
+      self.dt_array[dt_i] = dt
+      dt_i += 1
+      frames_count += 1
+    print(f"[Calculations] delta time mean: {round(self.dt_array.mean(), 2)}ns")
+  
+  def render(self):
+    self.dt_array.fill(0)
+    dots = []
+    
+    def update(num):
+      i = 0
+      past_dt = time.perf_counter_ns()
+      while i < len(self.objs):
+        point = self.objs[i].points[num]
+        #print(f"points: {point}, i: {i}, frame: {num}")
+        dots[i].set_data([point[0]], [point[1]])
+        i += 1
+      dt = time.perf_counter_ns() - past_dt
+      self.dt_array[num-1] = dt
+      return dots
+    
+    def init():
+      self.ax.set_xlim([-100, 100])
+      self.ax.set_ylim([-100, 100])
+      
+      i = 0
+      while i < len(self.objs):
+        dot, = self.ax.plot([], [], marker="o")
+        dots.append(dot)
+        i += 1
+      return dots
+    
+    ani = animation.FuncAnimation(self.fig, update, self.frames, init_func=init, blit=True)
+    ani.save('animation_drawing.mp4', writer=animation.FFMpegWriter(fps=self.fps, bitrate=5000, codec='h264'))
+    dt = time.time() - self.prog_dt
+    print(f"[Animation rendering] delta time mean: {round(self.dt_array.mean(), 2)}ns")
+    print(f"[Total processing] total time: {round(dt, 2)}s")
+    
+    
 if __name__ == "__main__":
-  obj1 = obj(10, 10)
-  obj2 = obj(0, 0)
-  #obj3 = obj(-5, -10)
-  objs = []
-  objs.append(obj1)
-  objs.append(obj2)
-  #objs.append(obj3)
-  obj1.mass = 5
-  obj2.mass = 10
-  obj2.lockPos = True
-  #obj3.mass = 5
-  obj1.push(-0.5, 0)
-  obj2.push(0, 0)
-  #obj3.push(0.7, 0)
+  prog_dt = time.time()
+  obj1 = obj([10, 10], 5, [-0.5, 0])
+  obj2 = obj([0, 0], 10, [], True)
   
-  fig, ax = plt.subplots()
+  sim1 = sim(secs=30)
+  sim1.create_obj([10, 10], 5, [-0.5, 0])
+  sim1.create_obj([0, 0], 10, [], True)
   
-  while len(obj1.points) <= 1800:
-    i = 0
-    while i < len(objs):
-      objs[i].update(objs)
-      i += 1
-    #obj1.print()
-    #obj2.print()
-    #input()
-    #print(f"{pointsOfObj1[i]}, {i}, {dt}")
-    
-    
-  def update(num):
-    ax.clear()
-    i = 0
-    
-    while i < len(objs):
-      point = objs[i].points[num]
-      print(f"points: {point}, i: {i}, frame: {num}")
-      ax.plot(point[0], point[1], marker='o')
-      i += 1
-      
-    ax.set_xlim([-100, 100])
-    ax.set_ylim([-100, 100])
-      
-      
-    
-  
-  ani = animation.FuncAnimation(fig, update, len(obj1.points))
-  ani.save('animation_drawing.mp4', writer=animation.FFMpegWriter(fps=60, bitrate=5000, codec='h264'))
-
-  #plt.plot(np.array([obj1.coords[0], obj2.coords[0]]), np.array([obj1.coords[1], obj2.coords[1]]), 'o')
-  #plt.show()
-  
-
+  sim1.calculate()
+  sim1.render()
