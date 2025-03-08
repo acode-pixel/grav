@@ -117,10 +117,6 @@ class sim:
     
     
 if __name__ == "__main__":
-  prog_dt = time.time()
-  obj1 = obj([10, 10], 5, [-0.5, 0])
-  obj2 = obj([0, 0], 10, [], True)
-  
   sim1 = sim(secs=30)
   sim1.create_obj([10, 10], 5, [-0.5, 0])
   sim1.create_obj([0, 0], 10, [], True)
