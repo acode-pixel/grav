@@ -52,35 +52,72 @@ class obj:
     print(f"coords: {self.coords}, speed: {self.speed}")
     
 class sim:
-  def __init__(self, name="Sim-Test", secs=25, fps=60):
+  def __init__(self, name="Sim-Test", secs=25, fps=60, liveSim=False):
     self.name = name
     self.objs = []
     self.frames = fps*secs
     self.fps = fps
+    self.liveSim = liveSim
     
     self.fig, self.ax = plt.subplots()
     self.dt_array = np.zeros(self.frames, dtype=float)
     self.prog_dt = 0
   
+  def start(self):
+    self.frames = 1
+    self.ax.set_xlim([-350, 350])
+    self.ax.set_ylim([-350, 350])
+    plot = []
+    i = 0
+    
+    while i < len(self.objs):
+      plot.append(plt.plot([], [], marker="o"))
+      i += 1
+      
+    def frames():
+      while True:
+        yield self.calculate()
+    
+    def animate(objs):
+      i = 0
+      while i < len(objs):
+        point = self.objs[i].coords
+        plot[i][0].set_data([point[0]], [point[1]])
+        i += 1
+      return plot
+      
+    ani = animation.FuncAnimation(self.fig, animate, frames=frames, save_count=120, interval=0)
+    plt.show()
+  
   def create_obj(self, pos=[0, 0], mass=1, speed=[0, 0], lockPos=False):
     self.objs.append(obj(pos, mass, speed, lockPos))
   
   def calculate(self):
-    self.prog_dt = time.time()
-    dt_i = 0
-    frames_count = 0
-    while frames_count < self.frames:
-      i = 0
-      past_dt = time.perf_counter_ns()
-      while i < len(self.objs):
-        self.objs[i].update(self.objs)
-        i += 1
+    if self.liveSim:
+      frames_count = 0
+      while frames_count < self.frames:
+        i = 0
+        while i < len(self.objs):
+          self.objs[i].update(self.objs)
+          i += 1
+        frames_count += 1
+      return self.objs
+    else:
+      self.prog_dt = time.time()
+      dt_i = 0
+      frames_count = 0
+      while frames_count < self.frames:
+        i = 0
+        past_dt = time.perf_counter_ns()
+        while i < len(self.objs):
+          self.objs[i].update(self.objs)
+          i += 1
       
-      dt = time.perf_counter_ns() - past_dt
-      self.dt_array[dt_i] = dt
-      dt_i += 1
-      frames_count += 1
-    print(f"[Calculations] delta time mean: {round(self.dt_array.mean(), 2)}ns")
+        dt = time.perf_counter_ns() - past_dt
+        self.dt_array[dt_i] = dt
+        dt_i += 1
+        frames_count += 1
+      print(f"[Calculations] delta time mean: {round(self.dt_array.mean(), 2)}ns")
   
   def render(self):
     self.dt_array.fill(0)
@@ -115,11 +152,12 @@ class sim:
     print(f"[Animation rendering] delta time mean: {round(self.dt_array.mean(), 2)}ns")
     print(f"[Total processing] total time: {round(dt, 2)}s")
     
-    
 if __name__ == "__main__":
-  sim1 = sim(secs=30)
-  sim1.create_obj([10, 10], 5, [-0.5, 0])
-  sim1.create_obj([0, 0], 10, [], True)
+  sim1 = sim(secs=240, liveSim=True)
+  sim1.create_obj([0, 0],30, lockPos=True)
+  sim1.create_obj([50, 20], 5, speed=[-0.05, -0.55])
+  sim1.create_obj([75, 0], 5, speed=[-0.15, -0.65])
   
-  sim1.calculate()
-  sim1.render()
+  #sim1.calculate()
+  #sim1.render()
+  sim1.start()
