@@ -2,6 +2,7 @@ import math, time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+from scipy.ndimage import shift
 
 class obj:
   
@@ -11,7 +12,9 @@ class obj:
     self.speed = np.array(speed, dtype=float) #sq units/s
     self.lockPos = lockPos
     self.points = []
+    self.speedArray = np.zeros((100), dtype=float)
     self.points.append([self.coords[0], self.coords[1]])
+    self.i = 0
   
   def push(self,x,y):
     self.speed += np.array([x, y], dtype=float)
@@ -28,6 +31,13 @@ class obj:
     
     self.coords += self.speed
     
+    if self.i < 100:
+      self.speedArray[self.i] = np.sqrt((self.speed**2).sum())
+      self.i += 1
+    else:
+      self.speedArray = shift(self.speedArray, -1)
+      self.speedArray[self.i-1] = np.sqrt((self.speed**2).sum())
+      
     self.points.append([self.coords[0], self.coords[1]])
     
   def getInfluencefromObj(self, otherObj):
@@ -59,32 +69,39 @@ class sim:
     self.fps = fps
     self.liveSim = liveSim
     
-    self.fig, self.ax = plt.subplots()
+    self.fig, self.axs = plt.subplots(2, 1)
     self.dt_array = np.zeros(self.frames, dtype=float)
     self.prog_dt = 0
   
   def start(self):
+    if self.liveSim == False:
+      self.calculate()
+      self.render()
+      return
+    
     self.frames = 1
-    self.ax.set_xlim([-350, 350])
-    self.ax.set_ylim([-350, 350])
+    self.axs[0].set_xlim([-350, 350])
+    self.axs[0].set_ylim([-350, 350])
     plot = []
     i = 0
     
     while i < len(self.objs):
-      plot.append(plt.plot([], [], marker="o"))
+      plot.append(self.axs[0].plot([], [], marker="o"))
       i += 1
       
     def frames():
       while True:
         yield self.calculate()
-    
+        
     def animate(objs):
       i = 0
+      self.axs[1].clear()
       while i < len(objs):
         point = self.objs[i].coords
         plot[i][0].set_data([point[0]], [point[1]])
+        self.axs[1].plot(np.arange(self.objs[i].i), self.objs[i].speedArray[:self.objs[i].i])
         i += 1
-      return plot
+      return self.axs
       
     ani = animation.FuncAnimation(self.fig, animate, frames=frames, save_count=120, interval=0)
     plt.show()
@@ -97,10 +114,13 @@ class sim:
       frames_count = 0
       while frames_count < self.frames:
         i = 0
+        past_dt = time.perf_counter_ns()
         while i < len(self.objs):
           self.objs[i].update(self.objs)
           i += 1
+        dt = time.perf_counter_ns() - past_dt
         frames_count += 1
+        self.axs[0].set_xlabel(f"Calculation time: {round((dt/1000), 2)}μs")
       return self.objs
     else:
       self.prog_dt = time.time()
@@ -117,7 +137,7 @@ class sim:
         self.dt_array[dt_i] = dt
         dt_i += 1
         frames_count += 1
-      print(f"[Calculations] delta time mean: {round(self.dt_array.mean(), 2)}ns")
+      print(f"[Calculations] delta time mean: {round((self.dt_array.mean()/1000), 2)}μs")
   
   def render(self):
     self.dt_array.fill(0)
@@ -136,12 +156,12 @@ class sim:
       return dots
     
     def init():
-      self.ax.set_xlim([-100, 100])
-      self.ax.set_ylim([-100, 100])
+      self.axs[0].set_xlim([-100, 100])
+      self.axs[0].set_ylim([-100, 100])
       
       i = 0
       while i < len(self.objs):
-        dot, = self.ax.plot([], [], marker="o")
+        dot, = self.axs[0].plot([], [], marker="o")
         dots.append(dot)
         i += 1
       return dots
@@ -149,15 +169,12 @@ class sim:
     ani = animation.FuncAnimation(self.fig, update, self.frames, init_func=init, blit=True)
     ani.save('animation_drawing.mp4', writer=animation.FFMpegWriter(fps=self.fps, bitrate=5000, codec='h264'))
     dt = time.time() - self.prog_dt
-    print(f"[Animation rendering] delta time mean: {round(self.dt_array.mean(), 2)}ns")
+    print(f"[Animation rendering] delta time mean: {round((self.dt_array.mean()/1000), 2)}μs")
     print(f"[Total processing] total time: {round(dt, 2)}s")
     
 if __name__ == "__main__":
-  sim1 = sim(secs=240, liveSim=True)
+  sim1 = sim(secs=60, liveSim=True)
   sim1.create_obj([0, 0],30, lockPos=True)
   sim1.create_obj([50, 20], 5, speed=[-0.05, -0.55])
-  sim1.create_obj([75, 0], 5, speed=[-0.15, -0.65])
-  
-  #sim1.calculate()
-  #sim1.render()
+  sim1.create_obj([75, 0], 5, speed=[-0.155, -0.65])
   sim1.start()
