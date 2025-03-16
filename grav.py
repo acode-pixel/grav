@@ -2,7 +2,6 @@ import math, time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from scipy.ndimage import shift
 
 class obj:
   
@@ -12,9 +11,10 @@ class obj:
     self.speed = np.array(speed, dtype=float) #sq units/s
     self.lockPos = lockPos
     self.points = []
-    self.speedArray = np.zeros((100), dtype=float)
+    self.speedArray = np.zeros(1000, dtype=float)
     self.points.append([self.coords[0], self.coords[1]])
     self.i = 0
+    self.lifespan = 0
   
   def push(self,x,y):
     self.speed += np.array([x, y], dtype=float)
@@ -31,14 +31,22 @@ class obj:
     
     self.coords += self.speed
     
-    if self.i < 100:
+    if self.i < self.speedArray.size:
       self.speedArray[self.i] = np.sqrt((self.speed**2).sum())
       self.i += 1
     else:
-      self.speedArray = shift(self.speedArray, -1)
-      self.speedArray[self.i-1] = np.sqrt((self.speed**2).sum())
+      self.speedArray = np.append(np.delete(self.speedArray, 0), np.sqrt((self.speed**2).sum()))
+      #self.speedArray[self.i-1] = np.sqrt((self.speed**2).sum())
+  
+    #if self.i < self.speedArray.size and self.lifespan%self.speedArray.size == 0:
+    #  self.speedArray[self.i] = np.sqrt((self.speed**2).sum())
+    #  self.i += 1
+    #elif self.lifespan%self.speedArray.size == 0:
+    #  self.speedArray = np.append(np.delete(self.speedArray, 0), np.sqrt((self.speed**2).sum()))
+    #  #self.speedArray[self.i-1] = np.sqrt((self.speed**2).sum())
       
     self.points.append([self.coords[0], self.coords[1]])
+    self.lifespan += 1
     
   def getInfluencefromObj(self, otherObj):
     if self == otherObj:
@@ -68,6 +76,7 @@ class sim:
     self.frames = fps*secs
     self.fps = fps
     self.liveSim = liveSim
+    self.lifeSpan = 0
     
     self.fig, self.axs = plt.subplots(2, 1)
     self.dt_array = np.zeros(self.frames, dtype=float)
@@ -99,9 +108,9 @@ class sim:
       while i < len(objs):
         point = self.objs[i].coords
         plot[i][0].set_data([point[0]], [point[1]])
-        self.axs[1].plot(np.arange(self.objs[i].i), self.objs[i].speedArray[:self.objs[i].i])
+        self.axs[1].plot(np.arange(self.objs[i].i)*1, self.objs[i].speedArray[:self.objs[i].i])
         i += 1
-      return self.axs
+      #return plot[:].append(self.axs[1])
       
     ani = animation.FuncAnimation(self.fig, animate, frames=frames, save_count=120, interval=0)
     plt.show()
@@ -120,7 +129,8 @@ class sim:
           i += 1
         dt = time.perf_counter_ns() - past_dt
         frames_count += 1
-        self.axs[0].set_xlabel(f"Calculation time: {round((dt/1000), 2)}μs")
+        self.axs[0].set_xlabel(f"Calculation time: {round((dt/1000), 2)}μs Sim lifespan: {self.lifeSpan} iterations")
+        self.lifeSpan += 1
       return self.objs
     else:
       self.prog_dt = time.time()
@@ -174,7 +184,11 @@ class sim:
     
 if __name__ == "__main__":
   sim1 = sim(secs=60, liveSim=True)
-  sim1.create_obj([0, 0],30, lockPos=True)
+  sim1.create_obj([0, 0],30, lockPos=False, speed=[0, 0.01])
   sim1.create_obj([50, 20], 5, speed=[-0.05, -0.55])
   sim1.create_obj([75, 0], 5, speed=[-0.155, -0.65])
+  #sim1.create_obj([60, -20], 2, speed=[-0.9, -1.05])
+  
+  #sim1.calculate()
+  #sim1.render()
   sim1.start()
