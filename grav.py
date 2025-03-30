@@ -11,7 +11,7 @@ class obj:
     self.speed = np.array(speed, dtype=float) #sq units/s
     self.lockPos = lockPos
     self.points = []
-    self.speedArray = np.zeros(1000, dtype=float)
+    self.speedArray = np.zeros(500, dtype=float)
     self.points.append([self.coords[0], self.coords[1]])
     self.i = 0
     self.lifespan = 0
@@ -36,18 +36,10 @@ class obj:
       self.i += 1
     else:
       self.speedArray = np.append(np.delete(self.speedArray, 0), np.sqrt((self.speed**2).sum()))
-      #self.speedArray[self.i-1] = np.sqrt((self.speed**2).sum())
-  
-    #if self.i < self.speedArray.size and self.lifespan%self.speedArray.size == 0:
-    #  self.speedArray[self.i] = np.sqrt((self.speed**2).sum())
-    #  self.i += 1
-    #elif self.lifespan%self.speedArray.size == 0:
-    #  self.speedArray = np.append(np.delete(self.speedArray, 0), np.sqrt((self.speed**2).sum()))
-    #  #self.speedArray[self.i-1] = np.sqrt((self.speed**2).sum())
       
     self.points.append([self.coords[0], self.coords[1]])
     self.lifespan += 1
-    
+  
   def getInfluencefromObj(self, otherObj):
     if self == otherObj:
       return [0,0]
@@ -91,11 +83,15 @@ class sim:
     self.frames = 1
     self.axs[0].set_xlim([-350, 350])
     self.axs[0].set_ylim([-350, 350])
+    self.axs[1].set_xlim([0, 500])
+    self.axs[1].set_ylim([0, 2])
     plot = []
+    plot2 = []
     i = 0
     
     while i < len(self.objs):
       plot.append(self.axs[0].plot([], [], marker="o"))
+      plot2.append(self.axs[1].plot([], []))
       i += 1
       
     def frames():
@@ -104,13 +100,13 @@ class sim:
         
     def animate(objs):
       i = 0
-      self.axs[1].clear()
       while i < len(objs):
         point = self.objs[i].coords
         plot[i][0].set_data([point[0]], [point[1]])
-        self.axs[1].plot(np.arange(self.objs[i].i)*1, self.objs[i].speedArray[:self.objs[i].i])
+        plot2[i][0].set_data(np.arange(self.objs[i].i)*1, self.objs[i].speedArray[:self.objs[i].i])
+        self.axs[1].relim()
+        self.axs[1].autoscale_view()
         i += 1
-      #return plot[:].append(self.axs[1])
       
     ani = animation.FuncAnimation(self.fig, animate, frames=frames, save_count=120, interval=0)
     plt.show()
@@ -158,7 +154,6 @@ class sim:
       past_dt = time.perf_counter_ns()
       while i < len(self.objs):
         point = self.objs[i].points[num]
-        #print(f"points: {point}, i: {i}, frame: {num}")
         dots[i].set_data([point[0]], [point[1]])
         i += 1
       dt = time.perf_counter_ns() - past_dt
@@ -186,9 +181,6 @@ if __name__ == "__main__":
   sim1 = sim(secs=60, liveSim=True)
   sim1.create_obj([0, 0],30, lockPos=False, speed=[0, 0.01])
   sim1.create_obj([50, 20], 5, speed=[-0.05, -0.55])
-  sim1.create_obj([75, 0], 5, speed=[-0.155, -0.65])
-  #sim1.create_obj([60, -20], 2, speed=[-0.9, -1.05])
+  sim1.create_obj([75, 0], 5, speed=[-0.145, -0.65])
   
-  #sim1.calculate()
-  #sim1.render()
   sim1.start()
