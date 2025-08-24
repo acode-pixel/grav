@@ -5,19 +5,22 @@ import numpy as np
 
 class obj:
   
-  def __init__(self, coords=[0.0, 0.0], mass=1, speed=[0.0, 0.0], lockPos=False):
+  def __init__(self, coords=[0.0, 0.0], mass=1, velocity=[0.0, 0.0], lockPos=False):
     self.mass = mass
     self.coords = np.array(coords, dtype=float)
-    self.speed = np.array(speed, dtype=float) #sq units/s
+    self.velocity = np.array(velocity, dtype=float) #sq units/s
+    self.acceleration = np.array(velocity, dtype=float) # sq units/s^2
     self.lockPos = lockPos
     self.points = []
     self.speedArray = np.zeros(500, dtype=float)
+    self.velocityArray = np.zeros(500, dtype=float)
+    self.accelerationArray = np.zeros(500, dtype=float)
     self.points.append([self.coords[0], self.coords[1]])
     self.i = 0
     self.lifespan = 0
   
   def push(self,x,y):
-    self.speed += np.array([x, y], dtype=float)
+    self.velocity += np.array([x, y], dtype=float)
   
   def update(self, otherObjs):
     if self.lockPos:
@@ -29,13 +32,13 @@ class obj:
         inflence = self.getInfluencefromObj(i)
         self.push(inflence[0],inflence[1])
     
-    self.coords += self.speed
+    self.coords += self.velocity
     
     if self.i < self.speedArray.size:
-      self.speedArray[self.i] = np.sqrt((self.speed**2).sum())
+      self.speedArray[self.i] = np.sqrt((self.velocity**2).sum())
       self.i += 1
     else:
-      self.speedArray = np.append(np.delete(self.speedArray, 0), np.sqrt((self.speed**2).sum()))
+      self.speedArray = np.append(np.delete(self.speedArray, 0), np.sqrt((self.velocity**2).sum()))
       
     self.points.append([self.coords[0], self.coords[1]])
     self.lifespan += 1
@@ -50,7 +53,8 @@ class obj:
     axis_distances[1] = math.dist([0,0],[0,localCoords[1]])
     distance = math.dist([0,0],localCoords)
     
-    g = (otherObj.mass**2)/((distance**2)*2*math.pi) # G = M^2 / 2pi * d^2
+    g = (otherObj.mass**2)/((distance**2)*2*math.pi) # G = M^2 / (2pi * d^2)
+    #g = ((otherObj.mass)*(self.mass))/(distance**2)
     influence = (g * (axis_distances/distance))/self.mass
     
     influence[0] = -influence[0] if localCoords[0] > 0 else influence[0]
@@ -59,7 +63,7 @@ class obj:
     return influence
       
   def print(self):
-    print(f"coords: {self.coords}, speed: {self.speed}")
+    print(f"coords: {self.coords}, speed: {self.velocity}")
     
 class sim:
   def __init__(self, name="Sim-Test", secs=25, fps=60, liveSim=False):
@@ -179,8 +183,7 @@ class sim:
     
 if __name__ == "__main__":
   sim1 = sim(secs=60, liveSim=True)
-  sim1.create_obj([0, 0],30, lockPos=False, speed=[0, 0.01])
-  sim1.create_obj([50, 20], 5, speed=[-0.05, -0.55])
-  sim1.create_obj([75, 0], 5, speed=[-0.145, -0.65])
+  sim1.create_obj([0, 0],30, speed=[0, 0.01], lockPos=False)
+  sim1.create_obj([30, 30], 3, speed=[0.05, -0.85])
   
   sim1.start()
