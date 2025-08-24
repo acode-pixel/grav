@@ -53,8 +53,8 @@ class obj:
     axis_distances[1] = math.dist([0,0],[0,localCoords[1]])
     distance = math.dist([0,0],localCoords)
     
-    g = (otherObj.mass**2)/((distance**2)*2*math.pi) # G = M^2 / (2pi * d^2)
-    #g = ((otherObj.mass)*(self.mass))/(distance**2)
+    g = (otherObj.mass**2)/((distance**2)*2*math.pi) # G = M^2 / ((2pi * d^2)
+    #g = ((otherObj.mass)*(self.mass))/(distance**2))
     influence = (g * (axis_distances/distance))/self.mass
     
     influence[0] = -influence[0] if localCoords[0] > 0 else influence[0]
@@ -183,7 +183,8 @@ class sim:
     
 if __name__ == "__main__":
   sim1 = sim(secs=60, liveSim=True)
-  sim1.create_obj([0, 0],30, speed=[0, 0.01], lockPos=False)
-  sim1.create_obj([30, 30], 3, speed=[0.05, -0.85])
+  sim1.create_obj([0, 0],30, lockPos=False, speed=[0, 0.01])
+  sim1.create_obj([50, 20], 5, speed=[-0.05, -0.55])
+  sim1.create_obj([75, 0], 5, speed=[-0.145, -0.65])
   
   sim1.start()
